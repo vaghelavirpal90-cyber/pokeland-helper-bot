@@ -378,7 +378,7 @@ function makeWelcomeEmbed(user, guild) {
     .setDescription(
       "Hey " + user + ", welcome to **" + (guild?.name || "our community") + "**! 👋\n\n" +
       "⚔️ **Your Pokeland journey starts here.**\n" +
-      "• 📢 Check <#announcements> for news and updates (if available).\n" +
+      "• 📢 Check the announcements channel for news and updates.\n" +
       "• 📜 Read the server rules before chatting.\n" +
       "• 💡 Share your builds, tips, tricks, and suggestions with other players.\n" +
       "• 🌐 Open the [Pokeland Helper website](" + WEBSITE_URL + ") for event schedules and tools.\n\n" +
