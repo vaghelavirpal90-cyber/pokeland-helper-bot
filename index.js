@@ -11,6 +11,7 @@ const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
+const welcomeBannerUrl = process.env.WELCOME_BANNER_URL || "";
 const eventsChannelId = process.env.EVENTS_CHANNEL_ID;
 const WEBSITE_URL = process.env.POKELAND_WEBSITE_URL || "https://pokeland-helper-3sm.pages.dev/";
 const HKT = "Asia/Hong_Kong";
@@ -372,21 +373,30 @@ client.on("interactionCreate", async interaction => {
 });
 
 function makeWelcomeEmbed(user, guild) {
-  return new EmbedBuilder()
+  const embed = new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("🎉 Welcome to Pokeland Helper!")
+    .setAuthor({
+      name: "POKELAND HELPER  •  COMMUNITY",
+      iconURL: client.user?.displayAvatarURL({ size: 128 })
+    })
+    .setTitle("✨ Welcome to the Pokeland Crew!")
     .setDescription(
-      "Hey " + user + ", welcome to **" + (guild?.name || "our community") + "**! 👋\n\n" +
-      "⚔️ **Your Pokeland journey starts here.**\n" +
-      "• 📢 Check the announcements channel for news and updates.\n" +
-      "• 📜 Read the server rules before chatting.\n" +
-      "• 💡 Share your builds, tips, tricks, and suggestions with other players.\n" +
-      "• 🌐 Open the [Pokeland Helper website](" + WEBSITE_URL + ") for event schedules and tools.\n\n" +
-      "**Have fun and enjoy Pokeland!** 🎮💙"
+      "Welcome " + user + " to **" + (guild?.name || "our community") + "**! 🎮\n\n" +
+      "━━━━━━━━━━━━━━━━━━━━\n" +
+      "⚔️ **YOUR ADVENTURE STARTS HERE**\n\n" +
+      "📜 **Read the rules** to get started.\n" +
+      "💡 **Share your knowledge** — builds, tips, tricks, and suggestions are always welcome.\n" +
+      "📢 **Stay updated** with community announcements.\n" +
+      "🌐 **[Open Pokeland Helper](" + WEBSITE_URL + ")** for event schedules and player tools.\n\n" +
+      "Make friends, help other trainers, and enjoy the game. **Welcome aboard!** 💙"
     )
-    .setThumbnail(user.displayAvatarURL({ size: 256 }))
-    .setFooter({ text: "Pokeland Helper · Built for the community" })
+    .setThumbnail(client.user?.displayAvatarURL({ size: 256 }))
+    .setFooter({ text: "POKELAND HELPER  •  Built by players, for players" })
     .setTimestamp();
+
+  // Optional wide banner: set WELCOME_BANNER_URL to a publicly accessible direct image URL.
+  if (welcomeBannerUrl) embed.setImage(welcomeBannerUrl);
+  return embed;
 }
 
 client.on("guildMemberAdd", async member => {
