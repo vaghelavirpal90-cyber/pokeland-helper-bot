@@ -11,8 +11,12 @@ const token = process.env.DISCORD_TOKEN;
 const clientId = process.env.CLIENT_ID;
 const guildId = process.env.GUILD_ID;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
+const eventsChannelId = process.env.EVENTS_CHANNEL_ID;
 const WEBSITE_URL = process.env.POKELAND_WEBSITE_URL || "https://pokeland-helper-3sm.pages.dev/";
 const HKT = "Asia/Hong_Kong";
+const REMINDER_CHECK_MS = 30000;
+const REMINDER_LEAD_MS = 5 * 60 * 1000;
+const sentReminderKeys = new Set();
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 const FETCH_TIMEOUT_MS = 12000;
 const CACHE_MS = 60 * 1000;
@@ -170,6 +174,46 @@ function eventOccurrences(events, now, limit = 10) {
   return candidates.slice(0, limit);
 }
 
+
+async function checkAutomaticReminders() {
+  if (!eventsChannelId) {
+    console.warn("Set EVENTS_CHANNEL_ID in hosting variables to enable automatic event reminders.");
+    return;
+  }
+  try {
+    const channel = await client.channels.fetch(eventsChannelId);
+    if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+      console.error("EVENTS_CHANNEL_ID is not a sendable text channel.");
+      return;
+    }
+    const now = Date.now();
+    const data = await fetchWebsiteSchedule();
+    const upcoming = eventOccurrences(data.events, new Date(now), 50);
+    for (const event of upcoming) {
+      const remaining = event.start - now;
+      if (remaining > REMINDER_LEAD_MS || remaining <= REMINDER_LEAD_MS - REMINDER_CHECK_MS) continue;
+      const key = event.id + ":" + event.start;
+      if (sentReminderKeys.has(key)) continue;
+      await channel.send({
+        embeds: [new EmbedBuilder()
+          .setColor(0xffa500)
+          .setTitle(event.icon + " Reminder: " + event.name)
+          .setDescription("Starts in **5 minutes**!\n🕒 " + formatHkt(new Date(event.start)) + "\n<t:" + Math.floor(event.start / 1000) + ":R>")
+          .setURL(WEBSITE_URL)
+          .setFooter({ text: "Pokeland Helper · Event reminder · HKT (UTC+8)" })]
+      });
+      sentReminderKeys.add(key);
+      console.log("Automatic reminder sent: " + event.name);
+    }
+    for (const key of sentReminderKeys) {
+      const timestamp = Number(key.split(":").pop());
+      if (timestamp < now - 86400000) sentReminderKeys.delete(key);
+    }
+  } catch (error) {
+    console.error("Automatic reminder check failed:", error.message);
+  }
+}
+
 function nextServer(data, nowMs, offset = 0) {
   let target = data.referenceTime;
   let number = data.referenceServer;
@@ -190,6 +234,9 @@ client.once("ready", async () => {
       { body: commands }
     );
     console.log("Slash commands registered: /ping, /events, /timers.");
+    console.log("Starting automatic event reminders (5 minutes before each event).");
+    await checkAutomaticReminders();
+    setInterval(checkAutomaticReminders, REMINDER_CHECK_MS);
   } catch (error) {
     console.error("Command registration failed:", error.message);
   }
