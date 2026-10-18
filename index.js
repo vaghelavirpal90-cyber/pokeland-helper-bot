@@ -279,7 +279,7 @@ client.on("interactionCreate", async interaction => {
         .setColor(0x42c5f5)
         .setTitle("🛰️ SERVER PLAYER ROLES")
         .setDescription("React with the matching number or letter below. Choosing another server replaces your previous Server Player role.")
-        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341741762.png")
+        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341980627.png")
         .setFooter({ text: "Pokeland Helper • React to choose your server" })] });
       for (const emoji of serverEmojis) await serverMessage.react(emoji);
 
@@ -296,7 +296,7 @@ client.on("interactionCreate", async interaction => {
         .setColor(0x9b59b6)
         .setTitle("🎨 NAME COLOUR")
         .setDescription("React with one colour emoji below. Change it anytime; your server role stays the same.")
-        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341980627.png")
+        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341741762.png")
         .setFooter({ text: "Pokeland Helper • React to choose your name colour" })] });
       for (const [emoji] of colours) await colourMessage.react(emoji);
       return interaction.editReply(`✅ Reaction role panels posted in <#${serverRolesChannelId}>.`);
