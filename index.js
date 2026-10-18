@@ -278,7 +278,7 @@ client.on("interactionCreate", async interaction => {
           });
         }
         const member = await guild.members.fetch(interaction.user.id);
-        const previousServerRoles = member.roles.cache.filter(role => /^S\\d+ • Server Player$/.test(role.name));
+        const previousServerRoles = member.roles.cache.filter(role => /^S\d+ • Server Player$/.test(role.name));
         if (previousServerRoles.size) await member.roles.remove(previousServerRoles, "Member changed their selected game server");
         await member.roles.add(selectedRole, "Member selected their game server");
         return interaction.editReply(`✅ Your server role is now **${selectedName}**. Only one Server Player role is kept; your colour role is unchanged.`);
