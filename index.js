@@ -17,10 +17,7 @@ if (!token || !clientId || !guildId) {
 }
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers
-  ]
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
 });
 
 const commands = [
@@ -33,7 +30,6 @@ const rest = new REST({ version: "10" }).setToken(token);
 
 client.once("ready", async () => {
   console.log(`Online as ${client.user.tag}`);
-
   try {
     await rest.put(
       Routes.applicationGuildCommands(clientId, guildId),
@@ -47,7 +43,6 @@ client.once("ready", async () => {
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
-
   if (interaction.commandName === "ping") {
     await interaction.reply("🏓 Pong! Pokeland Helper Assistant is online.");
   }
@@ -55,10 +50,8 @@ client.on("interactionCreate", async interaction => {
 
 client.on("guildMemberAdd", async member => {
   if (!welcomeChannelId) return;
-
   const channel = member.guild.channels.cache.get(welcomeChannelId);
   if (!channel || !channel.isTextBased()) return;
-
   channel.send(
     `Welcome ${member}! 👋 Welcome to Pokeland Helper! Share your tips, tricks and suggestions with the community.`
   ).catch(error => console.error("Welcome message failed:", error.message));
