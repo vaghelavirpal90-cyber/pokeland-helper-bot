@@ -279,7 +279,7 @@ client.on("interactionCreate", async interaction => {
         .setColor(0x42c5f5)
         .setTitle("🛰️ SERVER PLAYER ROLES")
         .setDescription("React with the matching number or letter below. Choosing another server replaces your previous Server Player role.")
-        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/server-roles-banner.svg")
+        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341741762.png")
         .setFooter({ text: "Pokeland Helper • React to choose your server" })] });
       for (const emoji of serverEmojis) await serverMessage.react(emoji);
 
@@ -296,7 +296,7 @@ client.on("interactionCreate", async interaction => {
         .setColor(0x9b59b6)
         .setTitle("🎨 NAME COLOUR")
         .setDescription("React with one colour emoji below. Change it anytime; your server role stays the same.")
-        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/name-colours-banner.svg")
+        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/1792341980627.png")
         .setFooter({ text: "Pokeland Helper • React to choose your name colour" })] });
       for (const [emoji] of colours) await colourMessage.react(emoji);
       return interaction.editReply(`✅ Reaction role panels posted in <#${serverRolesChannelId}>.`);
@@ -437,7 +437,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
     const guild = message.guild;
     const member = await guild.members.fetch(user.id);
 
-    if (title === "🛰️ POKELAND SERVER ROLES") {
+    if (title === "🛰️ SERVER PLAYER ROLES") {
       const serverEmojis = ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭"];
       const index = serverEmojis.indexOf(emoji);
       if (index < 0) return;
@@ -452,7 +452,7 @@ client.on("messageReactionAdd", async (reaction, user) => {
       return;
     }
 
-    if (title === "🎨 POKELAND NAME COLOURS") {
+    if (title === "🎨 NAME COLOUR") {
       const colours = [
         ["👑","Royal Gold",0xf1c40f],["🧊","Ice Blue",0x70d6ff],["💜","Amethyst",0x9b59b6],
         ["❤️","Crimson Red",0xe74c3c],["💚","Emerald Green",0x2ecc71],["🌸","Rose Pink",0xff69b4],
