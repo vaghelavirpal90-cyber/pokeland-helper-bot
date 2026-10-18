@@ -39,7 +39,13 @@ const commands = [
     .setDescription("Fetch upcoming events from the Pokeland Helper website"),
   new SlashCommandBuilder()
     .setName("timers")
-    .setDescription("Show the next server-opening timers from Pokeland Helper")
+    .setDescription("Show the next server-opening timers from Pokeland Helper"),
+  new SlashCommandBuilder()
+    .setName("testreminder")
+    .setDescription("Send a test event reminder to the events channel"),
+  new SlashCommandBuilder()
+    .setName("testwelcome")
+    .setDescription("Preview the welcome message in the welcome channel")
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(token);
@@ -233,7 +239,7 @@ client.once("ready", async () => {
       Routes.applicationGuildCommands(clientId, guildId),
       { body: commands }
     );
-    console.log("Slash commands registered: /ping, /events, /timers.");
+    console.log("Slash commands registered: /ping, /events, /timers, /testreminder, /testwelcome.");
     console.log("Starting automatic event reminders (5 minutes before each event).");
     await checkAutomaticReminders();
     setInterval(checkAutomaticReminders, REMINDER_CHECK_MS);
@@ -247,6 +253,64 @@ client.on("interactionCreate", async interaction => {
 
   if (interaction.commandName === "ping") {
     await interaction.reply("🏓 Pong! Pokeland Helper Assistant is online.");
+    return;
+  }
+
+  if (interaction.commandName === "testreminder") {
+    if (!interaction.memberPermissions?.has("ManageGuild")) {
+      await interaction.reply({ content: "Only server managers can run this test.", ephemeral: true });
+      return;
+    }
+    if (!eventsChannelId) {
+      await interaction.reply({ content: "EVENTS_CHANNEL_ID is missing in hosting Variables.", ephemeral: true });
+      return;
+    }
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const channel = await client.channels.fetch(eventsChannelId);
+      if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+        await interaction.editReply("I can't send messages to the configured events channel. Check the channel ID and bot permissions.");
+        return;
+      }
+      const now = new Date();
+      const embed = new EmbedBuilder()
+        .setColor(0xffa500)
+        .setTitle("🧪 Test Reminder — Pokeland Helper")
+        .setDescription("This is a **test message**, not a real event alert.\n\n✅ The bot can send messages to the events channel.\n⏰ Real reminders are sent about 5 minutes before scheduled events.")
+        .setURL(WEBSITE_URL)
+        .setFooter({ text: "Pokeland Helper · Test only · HKT (UTC+8)" })
+        .setTimestamp(now);
+      await channel.send({ embeds: [embed] });
+      await interaction.editReply("✅ Test reminder sent to <#" + eventsChannelId + ">.");
+    } catch (error) {
+      console.error("/testreminder failed:", error.message);
+      await interaction.editReply("❌ Couldn't send the test reminder. Check the bot's View Channel and Send Messages permissions.");
+    }
+    return;
+  }
+
+  if (interaction.commandName === "testwelcome") {
+    if (!interaction.memberPermissions?.has("ManageGuild")) {
+      await interaction.reply({ content: "Only server managers can run this test.", ephemeral: true });
+      return;
+    }
+    if (!welcomeChannelId) {
+      await interaction.reply({ content: "WELCOME_CHANNEL_ID is missing in hosting Variables. Set it to the ID of your 👋・welcome channel.", ephemeral: true });
+      return;
+    }
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const channel = await client.channels.fetch(welcomeChannelId);
+      if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+        await interaction.editReply("I can't send messages to the configured welcome channel. Check its ID and bot permissions.");
+        return;
+      }
+      await channel.send({ embeds: [makeWelcomeEmbed(interaction.user, interaction.guild)] });
+      await interaction.editReply("✅ Welcome preview sent to <#" + welcomeChannelId + ">.");
+    } catch (error) {
+      console.error("/testwelcome failed:", error.message);
+      await interaction.editReply("❌ Couldn't send the welcome preview. Check the bot's View Channel and Send Messages permissions.");
+    }
     return;
   }
 
@@ -307,13 +371,40 @@ client.on("interactionCreate", async interaction => {
   }
 });
 
+function makeWelcomeEmbed(user, guild) {
+  return new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("🎉 Welcome to Pokeland Helper!")
+    .setDescription(
+      "Hey " + user + ", welcome to **" + (guild?.name || "our community") + "**! 👋\n\n" +
+      "⚔️ **Your Pokeland journey starts here.**\n" +
+      "• 📢 Check <#announcements> for news and updates (if available).\n" +
+      "• 📜 Read the server rules before chatting.\n" +
+      "• 💡 Share your builds, tips, tricks, and suggestions with other players.\n" +
+      "• 🌐 Open the [Pokeland Helper website](" + WEBSITE_URL + ") for event schedules and tools.\n\n" +
+      "**Have fun and enjoy Pokeland!** 🎮💙"
+    )
+    .setThumbnail(user.displayAvatarURL({ size: 256 }))
+    .setFooter({ text: "Pokeland Helper · Built for the community" })
+    .setTimestamp();
+}
+
 client.on("guildMemberAdd", async member => {
-  if (!welcomeChannelId) return;
-  const channel = member.guild.channels.cache.get(welcomeChannelId);
-  if (!channel || !channel.isTextBased()) return;
-  channel.send(
-    `Welcome ${member}! 👋 Welcome to Pokeland Helper! Share your tips, tricks and suggestions with the community.`
-  ).catch(error => console.error("Welcome message failed:", error.message));
+  if (!welcomeChannelId) {
+    console.warn("WELCOME_CHANNEL_ID is not set; automatic welcome messages are disabled.");
+    return;
+  }
+  try {
+    const channel = await client.channels.fetch(welcomeChannelId);
+    if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+      console.error("WELCOME_CHANNEL_ID is not a sendable text channel.");
+      return;
+    }
+    await channel.send({ content: member.toString(), embeds: [makeWelcomeEmbed(member.user, member.guild)] });
+    console.log("Welcome message sent for " + member.user.tag);
+  } catch (error) {
+    console.error("Welcome message failed:", error.message);
+  }
 });
 
 client.login(token).catch(error => {
