@@ -296,7 +296,7 @@ client.on("interactionCreate", async interaction => {
         .setColor(0x9b59b6)
         .setTitle("🎨 NAME COLOUR")
         .setDescription("React with one colour emoji below. Change it anytime; your server role stays the same.")
-        .setImage("https://raw.githubusercontent.com/vaghelavir90-cyber/pokeland-helper-bot/main/assets/name-colours-banner.svg")
+        .setImage("https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/name-colours-banner.svg")
         .setFooter({ text: "Pokeland Helper • React to choose your name colour" })] });
       for (const [emoji] of colours) await colourMessage.react(emoji);
       return interaction.editReply(`✅ Reaction role panels posted in <#${serverRolesChannelId}>.`);
