@@ -50,8 +50,8 @@ const commands = [
   new SlashCommandBuilder()
     .setName("serverroles")
     .setDescription("Post the Pokeland server and name-colour role picker")
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
-  ,new SlashCommandBuilder()
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  new SlashCommandBuilder()
     .setName("help")
     .setDescription("Show Pokeland Helper bot commands and community links"),
   new SlashCommandBuilder()
