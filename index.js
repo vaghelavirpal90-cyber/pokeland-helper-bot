@@ -197,9 +197,9 @@ function eventOccurrences(events, now, limit = 10) {
 
 function getVitGiftBanner(eventId) {
   const base = "https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/";
-  if (eventId === "vit1") return base + "vit-gift-noon.jpg";      // 12:00–14:00
-  if (eventId === "vit2") return base + "vit-gift-evening.jpg";   // 18:00–20:00
-  if (eventId === "vit3") return base + "vit-gift-night.jpg";     // 21:00–22:00
+  if (eventId === "vit1") return base + "grok_1792392647477.jpg";  // 12:00–14:00 Noon
+  if (eventId === "vit2") return base + "grok_1792392650336.jpg";  // 18:00–20:00 Evening
+  if (eventId === "vit3") return base + "grok_1792392653758.jpg";  // 21:00–22:00 Night
   return null;
 }
 
