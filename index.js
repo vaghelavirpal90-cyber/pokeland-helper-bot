@@ -51,6 +51,16 @@ const commands = [
     .setName("serverroles")
     .setDescription("Post the Pokeland server and name-colour role picker")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+  ,new SlashCommandBuilder()
+    .setName("help")
+    .setDescription("Show Pokeland Helper bot commands and community links"),
+  new SlashCommandBuilder()
+    .setName("tip")
+    .setDescription("Post a polished Pokémon tip or guide card")
+    .addStringOption(option => option.setName("title").setDescription("Short tip title").setRequired(true).setMaxLength(200))
+    .addStringOption(option => option.setName("details").setDescription("Tip, trick, build info, or guide text").setRequired(true).setMaxLength(3500))
+    .addStringOption(option => option.setName("link").setDescription("Optional related website or YouTube link").setRequired(false).setMaxLength(500))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(token);
@@ -312,6 +322,49 @@ client.on("interactionCreate", async interaction => {
       console.error("/serverroles failed:", error.stack || error.message);
       return interaction.editReply("❌ Couldn't post the reaction panels. Check Console for the exact error and make sure the bot can send messages, embed links, and add reactions in the channel.");
     }
+  }
+
+  if (interaction.commandName === "help") {
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("🎮 Pokeland Helper Assistant")
+      .setDescription("Your community toolkit — quick, clean, and easy to use.")
+      .addFields(
+        { name: "📅 /events", value: "See upcoming game events and live status.", inline: true },
+        { name: "🛰️ /timers", value: "Check upcoming server opening timers.", inline: true },
+        { name: "🏓 /ping", value: "Check whether the bot is online.", inline: true },
+        { name: "📝 /tip", value: "Admins can publish a neat tip/guide embed.", inline: true },
+        { name: "🎨 /serverroles", value: "Admins can post server and name-colour role panels.", inline: true },
+        { name: "🌐 Pokeland Helper", value: WEBSITE_URL, inline: false }
+      )
+      .setFooter({ text: "Pokeland Helper • Built by players, for players" })
+      .setTimestamp();
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
+  }
+
+  if (interaction.commandName === "tip") {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
+      await interaction.reply({ content: "Only moderators can publish tips with this command.", ephemeral: true });
+      return;
+    }
+    const title = interaction.options.getString("title", true);
+    const details = interaction.options.getString("details", true);
+    const link = interaction.options.getString("link");
+    if (link && !/^https?:\\/\\//i.test(link)) {
+      await interaction.reply({ content: "Please use a full http:// or https:// link.", ephemeral: true });
+      return;
+    }
+    const embed = new EmbedBuilder()
+      .setColor(0x42c5f5)
+      .setAuthor({ name: "🧠 POKELAND • TIPS & TRICKS", iconURL: client.user?.displayAvatarURL({ size: 128 }) })
+      .setTitle("⚡ " + title)
+      .setDescription(details)
+      .setFooter({ text: "Pokeland Helper • Share useful knowledge with the community" })
+      .setTimestamp();
+    if (link) embed.addFields({ name: "🔗 Related link", value: link });
+    await interaction.reply({ embeds: [embed] });
+    return;
   }
 
   if (interaction.commandName === "ping") {
