@@ -7,6 +7,9 @@ A Discord bot for the Pokeland Helper community.
 - `/ping` — check whether the bot is online.
 - `/events` — fetch the upcoming daily/weekly event schedule from the published Pokeland Helper website.
 - `/timers` — fetch the website's server reference and calculate upcoming weekly server openings.
+- `/help` — show a clean, private command guide and community link.
+- `/tip` — moderators can publish a polished tip/build embed with an optional link.
+- `/serverroles` — admins can publish the server and name-colour reaction-role panels.
 - Optional welcome message when a member joins (requires `WELCOME_CHANNEL_ID`).
 
 ## Hosting environment variables
@@ -17,6 +20,9 @@ Set these in your host's Environment Variables / Secrets section:
 - `CLIENT_ID` — Discord application ID.
 - `GUILD_ID` — Discord server ID where commands should be registered.
 - `WELCOME_CHANNEL_ID` — optional channel ID for welcome messages.
+- `WELCOME_BANNER_URL` — optional public direct image URL for the welcome embed banner.
+- `EVENTS_CHANNEL_ID` — optional channel ID for automatic event reminders (5 minutes before events).
+- `SERVER_ROLES_CHANNEL_ID` — optional channel ID for reaction-role panels.
 - `POKELAND_WEBSITE_URL` — optional; defaults to `https://pokeland-helper-3sm.pages.dev/`.
 
 ## How website fetching works
