@@ -51,6 +51,9 @@ const commands = [
     .setName("testreminder")
     .setDescription("Send a test event reminder to the events channel"),
   new SlashCommandBuilder()
+    .setName("testvit")
+    .setDescription("Test all 3 Vit Gift reminder banners"),
+  new SlashCommandBuilder()
     .setName("testwelcome")
     .setDescription("Preview the welcome message in the welcome channel"),
   new SlashCommandBuilder()
@@ -353,6 +356,51 @@ client.on("interactionCreate", async interaction => {
     } catch (error) {
       console.error("/testreminder failed:", error.message);
       await interaction.editReply("❌ Couldn't send the test reminder. Check the bot's View Channel and Send Messages permissions.");
+    }
+    return;
+  }
+
+  if (interaction.commandName === "testvit") {
+    if (!interaction.memberPermissions?.has("ManageGuild")) {
+      await interaction.reply({ content: "Only server managers can run this test.", ephemeral: true });
+      return;
+    }
+    if (!eventsChannelId) {
+      await interaction.reply({ content: "EVENTS_CHANNEL_ID is missing in hosting Variables.", ephemeral: true });
+      return;
+    }
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const channel = await client.channels.fetch(eventsChannelId);
+      if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+        await interaction.editReply("I can't send messages to the configured events channel. Check the channel ID and bot permissions.");
+        return;
+      }
+
+      const tests = [
+        { id: "vit1", name: "Vit Gift (Noon)", icon: "⚡", time: "12:00–14:00" },
+        { id: "vit2", name: "Vit Gift (Evening)", icon: "⚡", time: "18:00–20:00" },
+        { id: "vit3", name: "Vit Gift (Night)", icon: "⚡", time: "21:00–22:00" }
+      ];
+
+      for (const t of tests) {
+        const embed = new EmbedBuilder()
+          .setColor(0xffa500)
+          .setTitle(t.icon + " Reminder: " + t.name)
+          .setDescription("Starts in **5 minutes**!\n🕒 Test · " + t.time + " HKT\n<t:" + Math.floor(Date.now() / 1000 + 300) + ":R>")
+          .setURL(WEBSITE_URL)
+          .setFooter({ text: "Pokeland Helper · TEST Vit Gift banner · HKT (UTC+8)" });
+
+        const banner = getVitGiftBanner(t.id);
+        if (banner) embed.setImage(banner);
+
+        await channel.send({ embeds: [embed] });
+      }
+
+      await interaction.editReply("✅ 3 Vit Gift test banners sent to <#" + eventsChannelId + ">.");
+    } catch (error) {
+      console.error("/testvit failed:", error.message);
+      await interaction.editReply("❌ Couldn't send the Vit Gift test banners. Check permissions.");
     }
     return;
   }
