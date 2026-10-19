@@ -19,6 +19,7 @@ const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
 const welcomeBannerUrl = process.env.WELCOME_BANNER_URL || "";
 const eventsChannelId = process.env.EVENTS_CHANNEL_ID;
 const serverRolesChannelId = process.env.SERVER_ROLES_CHANNEL_ID || "1551503585496399872";
+const tipsSourceForumId = process.env.TIPS_SOURCE_FORUM_ID || "1543303625994928219";
 const WEBSITE_URL = process.env.POKELAND_WEBSITE_URL || "https://pokeland-helper-3sm.pages.dev/";
 const HKT = "Asia/Hong_Kong";
 const REMINDER_CHECK_MS = 30000;
@@ -57,8 +58,7 @@ const commands = [
     .setDescription("Show Pokeland Helper bot commands and community links"),
   new SlashCommandBuilder()
     .setName("organize-tips")
-    .setDescription("Create polished guide categories and copy existing forum posts")
-    .addChannelOption(option => option.setName("source").setDescription("The existing tips-and-tricks forum to organize").setRequired(true).addChannelTypes(ChannelType.GuildForum))
+    .setDescription("Create polished guide categories and copy posts from the configured tips forum")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 ].map(command => command.toJSON());
 
@@ -347,10 +347,14 @@ client.on("interactionCreate", async interaction => {
       await interaction.reply({ content: "Only server managers can organize the forum.", ephemeral: true });
       return;
     }
-    const source = interaction.options.getChannel("source", true);
     await interaction.deferReply({ ephemeral: true });
     try {
       const guild = interaction.guild;
+      const source = await client.channels.fetch(tipsSourceForumId);
+      if (!source || source.type !== ChannelType.GuildForum || source.guildId !== guild.id) {
+        await interaction.editReply("Configured tips source is not a forum in this server. Check TIPS_SOURCE_FORUM_ID.");
+        return;
+      }
       const categoryName = "📚 POKELAND KNOWLEDGE HUB";
       let category = guild.channels.cache.find(ch => ch.type === ChannelType.GuildCategory && ch.name === categoryName);
       if (!category) category = await guild.channels.create({ name: categoryName, type: ChannelType.GuildCategory, reason: "Organize existing Pokeland tips without deleting originals" });
