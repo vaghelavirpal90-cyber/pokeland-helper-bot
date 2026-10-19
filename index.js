@@ -8,7 +8,8 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  PermissionFlagsBits
+  PermissionFlagsBits,
+  ChannelType
 } = require("discord.js");
 
 const token = process.env.DISCORD_TOKEN;
@@ -55,12 +56,10 @@ const commands = [
     .setName("help")
     .setDescription("Show Pokeland Helper bot commands and community links"),
   new SlashCommandBuilder()
-    .setName("tip")
-    .setDescription("Post a polished Pokémon tip or guide card")
-    .addStringOption(option => option.setName("title").setDescription("Short tip title").setRequired(true).setMaxLength(200))
-    .addStringOption(option => option.setName("details").setDescription("Tip, trick, build info, or guide text").setRequired(true).setMaxLength(3500))
-    .addStringOption(option => option.setName("link").setDescription("Optional related website or YouTube link").setRequired(false).setMaxLength(500))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages)
+    .setName("organize-tips")
+    .setDescription("Create polished guide categories and copy existing forum posts")
+    .addChannelOption(option => option.setName("source").setDescription("The existing tips-and-tricks forum to organize").setRequired(true).addChannelTypes(ChannelType.GuildForum))
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
 ].map(command => command.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(token);
@@ -343,27 +342,104 @@ client.on("interactionCreate", async interaction => {
     return;
   }
 
-  if (interaction.commandName === "tip") {
-    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageMessages)) {
-      await interaction.reply({ content: "Only moderators can publish tips with this command.", ephemeral: true });
+  if (interaction.commandName === "organize-tips") {
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({ content: "Only server managers can organize the forum.", ephemeral: true });
       return;
     }
-    const title = interaction.options.getString("title", true);
-    const details = interaction.options.getString("details", true);
-    const link = interaction.options.getString("link");
-    if (link && !/^https?:\\/\\//i.test(link)) {
-      await interaction.reply({ content: "Please use a full http:// or https:// link.", ephemeral: true });
-      return;
+    const source = interaction.options.getChannel("source", true);
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const guild = interaction.guild;
+      const categoryName = "📚 POKELAND KNOWLEDGE HUB";
+      let category = guild.channels.cache.find(ch => ch.type === ChannelType.GuildCategory && ch.name === categoryName);
+      if (!category) category = await guild.channels.create({ name: categoryName, type: ChannelType.GuildCategory, reason: "Organize existing Pokeland tips without deleting originals" });
+
+      const destinations = [
+        { key: "guides", name: "📘・guides-strategy", title: "Guides & Strategy", description: "Beginner, early-game, mid-game and advanced strategies." },
+        { key: "freebies", name: "💎・freebies-tricks", title: "Freebies & Tricks", description: "Free rewards, berry tips, ticket tricks and useful codes." },
+        { key: "teams", name: "⚔️・pokemon-teams", title: "Pokémon Builds & Teams", description: "Pokémon builds, team compositions and flying teams." },
+        { key: "tiers", name: "🏆・tier-lists-updates", title: "Tier Lists & Game Info", description: "Tier lists, ability/buff information and game updates." },
+        { key: "videos", name: "🎬・videos-resources", title: "Videos & Resources", description: "Watch-this posts, tutorials and useful external resources." }
+      ];
+      const targets = {};
+      for (const item of destinations) {
+        let forum = guild.channels.cache.find(ch => ch.parentId === category.id && ch.name === item.name && ch.type === ChannelType.GuildForum);
+        if (!forum) forum = await guild.channels.create({
+          name: item.name,
+          type: ChannelType.GuildForum,
+          parent: category.id,
+          topic: item.description,
+          reason: "Create organized Pokeland guide forum"
+        });
+        targets[item.key] = forum;
+      }
+
+      const threads = [];
+      const active = await source.threads.fetchActive();
+      threads.push(...active.threads.values());
+      let before;
+      for (let page = 0; page < 10; page++) {
+        const archived = await source.threads.fetchArchived({ type: "public", limit: 100, before });
+        if (!archived.threads.size) break;
+        threads.push(...archived.threads.values());
+        const last = [...archived.threads.values()].at(-1);
+        if (!archived.hasMore || !last) break;
+        before = last.archiveTimestamp ? new Date(last.archiveTimestamp) : undefined;
+        if (!before) break;
+      }
+
+      const unique = [...new Map(threads.map(thread => [thread.id, thread])).values()];
+      let copied = 0, skipped = 0, failed = 0;
+      const chooseTarget = text => {
+        const s = text.toLowerCase();
+        if (/youtube|youtu\.be|must watch|video|watch this|tutorial/.test(s)) return "videos";
+        if (/berry|myst ticket|free|code|redeem|gift|trick|exploit/.test(s)) return "freebies";
+        if (/tier list|p2w|f2p|buff info|ability|eons|latias|rank/.test(s)) return "tiers";
+        if (/team|flying|build|pokemon|pokémon|rayquaza|lugia|zacian|arceus/.test(s)) return "teams";
+        return "guides";
+      };
+      for (const thread of unique) {
+        try {
+          const starter = await thread.fetchStarterMessage().catch(() => null);
+          const title = (thread.name || "Pokeland Tip").slice(0, 100);
+          const body = starter?.content || "";
+          const attachmentUrls = starter ? [...starter.attachments.values()].map(a => a.url) : [];
+          const contentText = [body, ...attachmentUrls].join("\n");
+          const key = chooseTarget(title + "\n" + contentText);
+          const embed = new EmbedBuilder()
+            .setColor(0x42c5f5)
+            .setTitle(title)
+            .setDescription((body || "*Original post had no text in its first message.*").slice(0, 4000))
+            .setFooter({ text: "Moved copy • Original post kept in the old forum" });
+          if (attachmentUrls.length) embed.addFields({ name: "📎 Original attachments", value: attachmentUrls.slice(0, 5).join("\n").slice(0, 1000) });
+          embed.addFields({ name: "🔗 Original post", value: "https://discord.com/channels/" + guild.id + "/" + thread.id });
+          await targets[key].threads.create({
+            name: title,
+            message: { embeds: [embed] },
+            reason: "Copy existing Pokeland forum post into organized category"
+          });
+          copied++;
+        } catch (err) {
+          failed++;
+          console.error("Could not copy forum post " + thread.id + ":", err.message);
+        }
+      }
+      const summary = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle("📚 Pokeland Knowledge Hub created")
+        .setDescription("Created the new category and guide forums. Existing posts were copied into the closest matching section; the original forum and posts were not deleted.")
+        .addFields(
+          { name: "Posts copied", value: String(copied), inline: true },
+          { name: "Posts failed", value: String(failed), inline: true },
+          { name: "Sections", value: destinations.map(x => x.title).join("\n"), inline: false }
+        )
+        .setFooter({ text: "Please review the sections; automatic topic matching may need manual adjustments." });
+      await interaction.editReply({ embeds: [summary] });
+    } catch (error) {
+      console.error("/organize-tips failed:", error.stack || error.message);
+      await interaction.editReply("Couldn't finish organizing the forum. Check that I have Manage Channels, View Channel, Read Message History, Send Messages, Embed Links, and Create Public Threads permissions. Originals were not deleted.");
     }
-    const embed = new EmbedBuilder()
-      .setColor(0x42c5f5)
-      .setAuthor({ name: "🧠 POKELAND • TIPS & TRICKS", iconURL: client.user?.displayAvatarURL({ size: 128 }) })
-      .setTitle("⚡ " + title)
-      .setDescription(details)
-      .setFooter({ text: "Pokeland Helper • Share useful knowledge with the community" })
-      .setTimestamp();
-    if (link) embed.addFields({ name: "🔗 Related link", value: link });
-    await interaction.reply({ embeds: [embed] });
     return;
   }
 
