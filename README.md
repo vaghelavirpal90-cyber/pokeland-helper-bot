@@ -8,7 +8,7 @@ A Discord bot for the Pokeland Helper community.
 - `/events` — fetch the upcoming daily/weekly event schedule from the published Pokeland Helper website.
 - `/timers` — fetch the website's server reference and calculate upcoming weekly server openings.
 - `/help` — show a clean, private command guide and community link.
-- `/tip` — moderators can publish a polished tip/build embed with an optional link.
+- `/organize-tips` — server managers can create a Pokeland Knowledge Hub and copy existing posts from a selected forum into topic-based forums. Original posts remain untouched.
 - `/serverroles` — admins can publish the server and name-colour reaction-role panels.
 - Optional welcome message when a member joins (requires `WELCOME_CHANNEL_ID`).
 
