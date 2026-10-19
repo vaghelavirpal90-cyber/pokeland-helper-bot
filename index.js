@@ -192,6 +192,14 @@ function eventOccurrences(events, now, limit = 10) {
 }
 
 
+function getVitGiftBanner(eventId) {
+  const base = "https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/";
+  if (eventId === "vit1") return base + "vit-gift-noon.jpg";      // 12:00–14:00
+  if (eventId === "vit2") return base + "vit-gift-evening.jpg";   // 18:00–20:00
+  if (eventId === "vit3") return base + "vit-gift-night.jpg";     // 21:00–22:00
+  return null;
+}
+
 async function checkAutomaticReminders() {
   if (!eventsChannelId) {
     console.warn("Set EVENTS_CHANNEL_ID in hosting variables to enable automatic event reminders.");
@@ -211,14 +219,19 @@ async function checkAutomaticReminders() {
       if (remaining > REMINDER_LEAD_MS || remaining <= REMINDER_LEAD_MS - REMINDER_CHECK_MS) continue;
       const key = event.id + ":" + event.start;
       if (sentReminderKeys.has(key)) continue;
-      await channel.send({
-        embeds: [new EmbedBuilder()
-          .setColor(0xffa500)
-          .setTitle(event.icon + " Reminder: " + event.name)
-          .setDescription("Starts in **5 minutes**!\n🕒 " + formatHkt(new Date(event.start)) + "\n<t:" + Math.floor(event.start / 1000) + ":R>")
-          .setURL(WEBSITE_URL)
-          .setFooter({ text: "Pokeland Helper · Event reminder · HKT (UTC+8)" })]
-      });
+
+      const embed = new EmbedBuilder()
+        .setColor(0xffa500)
+        .setTitle(event.icon + " Reminder: " + event.name)
+        .setDescription("Starts in **5 minutes**!\n🕒 " + formatHkt(new Date(event.start)) + "\n<t:" + Math.floor(event.start / 1000) + ":R>")
+        .setURL(WEBSITE_URL)
+        .setFooter({ text: "Pokeland Helper · Event reminder · HKT (UTC+8)" });
+
+      // Vit Gift banners (time-based Pikachu images)
+      const banner = getVitGiftBanner(event.id);
+      if (banner) embed.setImage(banner);
+
+      await channel.send({ embeds: [embed] });
       sentReminderKeys.add(key);
       console.log("Automatic reminder sent: " + event.name);
     }
