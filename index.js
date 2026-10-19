@@ -52,7 +52,10 @@ const commands = [
     .setDescription("Send a test event reminder to the events channel"),
   new SlashCommandBuilder()
     .setName("testvit")
-    .setDescription("Test all 3 Vit Gift reminder banners"),
+    .setDescription("Test all 3 Vit Gift + World Boss reminder banners"),
+  new SlashCommandBuilder()
+    .setName("testworldboss")
+    .setDescription("Test World Boss reminder banner only"),
   new SlashCommandBuilder()
     .setName("testwelcome")
     .setDescription("Preview the welcome message in the welcome channel"),
@@ -195,11 +198,12 @@ function eventOccurrences(events, now, limit = 10) {
 }
 
 
-function getVitGiftBanner(eventId) {
+function getEventBanner(eventId) {
   const base = "https://raw.githubusercontent.com/vaghelavirpal90-cyber/pokeland-helper-bot/main/assets/";
   if (eventId === "vit1") return base + "grok_1792392647477.jpg";  // 12:00–14:00 Noon
   if (eventId === "vit2") return base + "grok_1792392650336.jpg";  // 18:00–20:00 Evening
   if (eventId === "vit3") return base + "grok_1792392653758.jpg";  // 21:00–22:00 Night
+  if (eventId === "wb")   return base + "world-boss-banner.jpg";   // World Boss 20:00–20:30
   return null;
 }
 
@@ -231,7 +235,7 @@ async function checkAutomaticReminders() {
         .setFooter({ text: "Pokeland Helper · Event reminder · HKT (UTC+8)" });
 
       // Vit Gift banners (time-based Pikachu images)
-      const banner = getVitGiftBanner(event.id);
+      const banner = getEventBanner(event.id);
       if (banner) embed.setImage(banner);
 
       await channel.send({ embeds: [embed] });
@@ -380,7 +384,8 @@ client.on("interactionCreate", async interaction => {
       const tests = [
         { id: "vit1", name: "Vit Gift (Noon)", icon: "⚡", time: "12:00–14:00" },
         { id: "vit2", name: "Vit Gift (Evening)", icon: "⚡", time: "18:00–20:00" },
-        { id: "vit3", name: "Vit Gift (Night)", icon: "⚡", time: "21:00–22:00" }
+        { id: "vit3", name: "Vit Gift (Night)", icon: "⚡", time: "21:00–22:00" },
+        { id: "wb", name: "World Boss", icon: "🐉", time: "20:00–20:30" }
       ];
 
       for (const t of tests) {
@@ -389,18 +394,54 @@ client.on("interactionCreate", async interaction => {
           .setTitle(t.icon + " Reminder: " + t.name)
           .setDescription("Starts in **5 minutes**!\n🕒 Test · " + t.time + " HKT\n<t:" + Math.floor(Date.now() / 1000 + 300) + ":R>")
           .setURL(WEBSITE_URL)
-          .setFooter({ text: "Pokeland Helper · TEST Vit Gift banner · HKT (UTC+8)" });
+          .setFooter({ text: "Pokeland Helper · TEST Event banner · HKT (UTC+8)" });
 
-        const banner = getVitGiftBanner(t.id);
+        const banner = getEventBanner(t.id);
         if (banner) embed.setImage(banner);
 
         await channel.send({ embeds: [embed] });
       }
 
-      await interaction.editReply("✅ 3 Vit Gift test banners sent to <#" + eventsChannelId + ">.");
+      await interaction.editReply("✅ 4 test banners sent (3 Vit Gift + World Boss) to <#" + eventsChannelId + ">.");
     } catch (error) {
       console.error("/testvit failed:", error.message);
-      await interaction.editReply("❌ Couldn't send the Vit Gift test banners. Check permissions.");
+      await interaction.editReply("❌ Couldn't send the test banners. Check permissions.");
+    }
+    return;
+  }
+
+  if (interaction.commandName === "testworldboss") {
+    if (!interaction.memberPermissions?.has("ManageGuild")) {
+      await interaction.reply({ content: "Only server managers can run this test.", ephemeral: true });
+      return;
+    }
+    if (!eventsChannelId) {
+      await interaction.reply({ content: "EVENTS_CHANNEL_ID is missing in hosting Variables.", ephemeral: true });
+      return;
+    }
+    await interaction.deferReply({ ephemeral: true });
+    try {
+      const channel = await client.channels.fetch(eventsChannelId);
+      if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+        await interaction.editReply("I can't send messages to the configured events channel.");
+        return;
+      }
+
+      const embed = new EmbedBuilder()
+        .setColor(0xffa500)
+        .setTitle("🐉 Reminder: World Boss")
+        .setDescription("Starts in **5 minutes**!\n🕒 Test · 20:00–20:30 HKT\n<t:" + Math.floor(Date.now() / 1000 + 300) + ":R>")
+        .setURL(WEBSITE_URL)
+        .setFooter({ text: "Pokeland Helper · TEST World Boss banner · HKT (UTC+8)" });
+
+      const banner = getEventBanner("wb");
+      if (banner) embed.setImage(banner);
+
+      await channel.send({ embeds: [embed] });
+      await interaction.editReply("✅ World Boss test banner sent to <#" + eventsChannelId + ">.");
+    } catch (error) {
+      console.error("/testworldboss failed:", error.message);
+      await interaction.editReply("❌ Couldn't send the World Boss test banner.");
     }
     return;
   }
