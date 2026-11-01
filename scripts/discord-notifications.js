@@ -14,7 +14,7 @@ function hktParts(date) {
 }
 
 function parseDateUtcCall(html) {
-  const match = html.match(/const\\s+REF_TIME\\s*=\\s*Date\\.UTC\\(([^)]*)\\)\\s*;/);
+  const match = html.match(/const\s+REF_TIME\s*=\s*Date\.UTC\(([^)]*)\)\s*;/);
   if (!match) throw new Error("Website timer reference not found.");
   const args = match[1].split(",").map(v => Number(v.trim()));
   if (args.length < 3 || args.some(v => !Number.isFinite(v))) throw new Error("Invalid website timer reference.");
@@ -22,9 +22,9 @@ function parseDateUtcCall(html) {
 }
 
 function parseSchedule(html) {
-  const block = html.match(/const\\s+DAILY_EVENTS\\s*=\\s*\\[([\\s\\S]*?)\\]\\s*;/);
+  const block = html.match(/const\s+DAILY_EVENTS\s*=\s*\[([\s\S]*?)\]\s*;/);
   if (!block) throw new Error("Website event schedule not found.");
-  const re = /\\{\\s*id:\s*'([^']+)'\\s*,\\s*name:\s*'([^']+)'\\s*,\\s*icon:\s*'([^']*)'\\s*,\\s*desc:\s*'([^']*)'\\s*,\\s*h:\s*(\\d+)\\s*,\\s*m:\s*(\\d+)\\s*,\\s*dur:\s*(\\d+)\\s*,\\s*dow:\s*(null|\\d+)\\s*\\}/g;
+  const re = /\{\s*id:\s*'([^']+)'\s*,\s*name:\s*'([^']+)'\s*,\s*icon:\s*'([^']*)'\s*,\s*desc:\s*'([^']*)'\s*,\s*h:\s*(\d+)\s*,\s*m:\s*(\d+)\s*,\s*dur:\s*(\d+)\s*,\s*dow:\s*(null|\d+)\s*\}/g;
   const events = [];
   let m;
   while ((m = re.exec(block[1]))) events.push({
@@ -78,7 +78,7 @@ async function reminderCheck() {
       embeds: [{
         color: 16753920,
         title: event.icon + " Reminder: " + event.name,
-        description: "Starts in **5 minutes or less**!\\n🕒 <t:" + unix + ":F>\\n<t:" + unix + ":R>",
+        description: "Starts in **5 minutes or less**!\n🕒 <t:" + unix + ":F>\n<t:" + unix + ":R>",
         url: WEBSITE_URL,
         footer: { text: "Pokeland Helper · Event reminder · HKT (UTC+8)" }
       }]
