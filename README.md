@@ -20,8 +20,10 @@ Set these in your host's Environment Variables / Secrets section:
 - `CLIENT_ID` — Discord application ID.
 - `GUILD_ID` — Discord server ID where commands should be registered.
 - `WELCOME_CHANNEL_ID` — optional channel ID for welcome messages.
+- `WELCOME_WEBHOOK_URL` — optional Discord webhook URL for automatic welcome messages; takes priority over `WELCOME_CHANNEL_ID`.
 - `WELCOME_BANNER_URL` — optional public direct image URL for the welcome embed banner.
 - `EVENTS_CHANNEL_ID` — optional channel ID for automatic event reminders (5 minutes before events).
+- `REMINDER_WEBHOOK_URL` — optional Discord webhook URL for automatic event reminders; takes priority over `EVENTS_CHANNEL_ID`.
 - `SERVER_ROLES_CHANNEL_ID` — optional channel ID for reaction-role panels.
 - `POKELAND_WEBSITE_URL` — optional; defaults to `https://pokeland-helper-3sm.pages.dev/`.
 
