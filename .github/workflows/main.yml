@@ -1,0 +1,43 @@
+name: Pokeland Discord Notifications
+
+on:
+  schedule:
+    # GitHub scheduled workflows run on UTC; check every five minutes.
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Choose a notification action"
+        required: true
+        type: choice
+        options:
+          - reminder
+          - welcome-test
+        default: reminder
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pokeland-discord-notifications
+  cancel-in-progress: false
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Send Discord notification
+        env:
+          REMINDER_WEBHOOK_URL: ${{ secrets.REMINDER_WEBHOOK_URL }}
+          WELCOME_WEBHOOK_URL: ${{ secrets.WELCOME_WEBHOOK_URL }}
+          NOTIFY_MODE: ${{ github.event_name == 'workflow_dispatch' && inputs.mode || 'reminder' }}
+        run: node scripts/discord-notifications.js
