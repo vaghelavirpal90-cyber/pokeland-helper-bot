@@ -9,7 +9,8 @@ const {
   ActionRowBuilder,
   StringSelectMenuBuilder,
   PermissionFlagsBits,
-  ChannelType
+  ChannelType,
+  WebhookClient
 } = require("discord.js");
 
 const token = process.env.DISCORD_TOKEN;
@@ -18,6 +19,10 @@ const guildId = process.env.GUILD_ID;
 const welcomeChannelId = process.env.WELCOME_CHANNEL_ID;
 const welcomeBannerUrl = process.env.WELCOME_BANNER_URL || "";
 const eventsChannelId = process.env.EVENTS_CHANNEL_ID;
+const reminderWebhookUrl = process.env.REMINDER_WEBHOOK_URL || "";
+const welcomeWebhookUrl = process.env.WELCOME_WEBHOOK_URL || "";
+const reminderWebhook = reminderWebhookUrl ? new WebhookClient({ url: reminderWebhookUrl }) : null;
+const welcomeWebhook = welcomeWebhookUrl ? new WebhookClient({ url: welcomeWebhookUrl }) : null;
 const serverRolesChannelId = process.env.SERVER_ROLES_CHANNEL_ID || "1551503585496399872";
 const tipsSourceForumId = process.env.TIPS_SOURCE_FORUM_ID || "1543303625994928219";
 const WEBSITE_URL = process.env.POKELAND_WEBSITE_URL || "https://pokeland-helper-3sm.pages.dev/";
@@ -205,13 +210,13 @@ function getEventBanner(eventId) {
 }
 
 async function checkAutomaticReminders() {
-  if (!eventsChannelId) {
-    console.warn("Set EVENTS_CHANNEL_ID in hosting variables to enable automatic event reminders.");
+  if (!reminderWebhook && !eventsChannelId) {
+    console.warn("Set REMINDER_WEBHOOK_URL or EVENTS_CHANNEL_ID to enable automatic event reminders.");
     return;
   }
   try {
-    const channel = await client.channels.fetch(eventsChannelId);
-    if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+    const channel = reminderWebhook ? null : await client.channels.fetch(eventsChannelId);
+    if (!reminderWebhook && (!channel || !channel.isTextBased() || !channel.isSendable())) {
       console.error("EVENTS_CHANNEL_ID is not a sendable text channel.");
       return;
     }
@@ -235,7 +240,11 @@ async function checkAutomaticReminders() {
       const banner = getEventBanner(event.id);
       if (banner) embed.setImage(banner);
 
-      await channel.send({ embeds: [embed] });
+      if (reminderWebhook) {
+        await reminderWebhook.send({ embeds: [embed] });
+      } else {
+        await channel.send({ embeds: [embed] });
+      }
       sentReminderKeys.add(key);
       console.log("Automatic reminder sent: " + event.name);
     }
@@ -589,17 +598,22 @@ function makeWelcomeEmbed(user, guild) {
 }
 
 client.on("guildMemberAdd", async member => {
-  if (!welcomeChannelId) {
-    console.warn("WELCOME_CHANNEL_ID is not set; automatic welcome messages are disabled.");
+  if (!welcomeWebhook && !welcomeChannelId) {
+    console.warn("Set WELCOME_WEBHOOK_URL or WELCOME_CHANNEL_ID to enable automatic welcome messages.");
     return;
   }
   try {
-    const channel = await client.channels.fetch(welcomeChannelId);
-    if (!channel || !channel.isTextBased() || !channel.isSendable()) {
-      console.error("WELCOME_CHANNEL_ID is not a sendable text channel.");
-      return;
+    const payload = { content: member.toString(), embeds: [makeWelcomeEmbed(member.user, member.guild)] };
+    if (welcomeWebhook) {
+      await welcomeWebhook.send(payload);
+    } else {
+      const channel = await client.channels.fetch(welcomeChannelId);
+      if (!channel || !channel.isTextBased() || !channel.isSendable()) {
+        console.error("WELCOME_CHANNEL_ID is not a sendable text channel.");
+        return;
+      }
+      await channel.send(payload);
     }
-    await channel.send({ content: member.toString(), embeds: [makeWelcomeEmbed(member.user, member.guild)] });
     console.log("Welcome message sent for " + member.user.tag);
   } catch (error) {
     console.error("Welcome message failed:", error.message);
