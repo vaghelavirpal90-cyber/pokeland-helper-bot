@@ -39,3 +39,17 @@ Times are shown in Hong Kong time (HKT, UTC+8), matching the website's server-ti
 4. In your server, try `/ping`, `/events`, and `/timers`.
 
 Never commit your bot token to GitHub. Store it only as a secret/environment variable on your hosting provider.
+
+
+## GitHub Actions webhook notifications
+
+The workflow at `.github/workflows/main.yml` checks the published website schedule every five minutes and posts an event reminder through the Reminder Discord webhook when an event is due within five minutes.
+
+Add these repository Actions secrets (never put webhook URLs in source files):
+
+- `REMINDER_WEBHOOK_URL` — the event-reminder channel webhook.
+- `WELCOME_WEBHOOK_URL` — the separate welcome-channel webhook, used only by the manual `welcome-test` workflow option.
+
+To run the automatic member welcome, keep Discord's built-in welcome system enabled or run the bot with `WELCOME_CHANNEL_ID`; GitHub Actions cannot detect Discord member-join events by itself. The workflow's welcome option is a manual test message, not an automatic join trigger.
+
+Open **Settings → Secrets and variables → Actions → New repository secret** for each secret. Scheduled GitHub Actions runs are not an always-on bot host and may be delayed by GitHub.
