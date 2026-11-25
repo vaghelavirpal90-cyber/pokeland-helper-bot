@@ -478,6 +478,7 @@ client.on("interactionCreate", async interaction => {
       .addFields(
         { name: "📅 /events", value: "See upcoming game events and live status.", inline: true },
         { name: "🛰️ /timers", value: "Check upcoming server opening timers.", inline: true },
+        { name: "🤖 /ask", value: "Chat with the AI assistant.", inline: true },
         { name: "🏓 /ping", value: "Check whether the bot is online.", inline: true },
         { name: "📝 /tip", value: "Admins can publish a neat tip/guide embed.", inline: true },
         { name: "🎨 /serverroles", value: "Admins can post server and name-colour role panels.", inline: true },
