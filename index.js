@@ -40,7 +40,7 @@ if (!token || !clientId || !guildId) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.MessageContent],
   partials: [Partials.Message, Partials.Channel, Partials.Reaction]
 });
 
@@ -48,6 +48,10 @@ const commands = [
   new SlashCommandBuilder()
     .setName("ping")
     .setDescription("Check if Pokeland Helper Assistant is online"),
+  new SlashCommandBuilder()
+    .setName("ask")
+    .setDescription("Ask the Pokeland AI assistant anything")
+    .addStringOption(option => option.setName("question").setDescription("What would you like to ask?").setRequired(true).setMaxLength(1000)),
   new SlashCommandBuilder()
     .setName("events")
     .setDescription("Fetch upcoming events from the Pokeland Helper website"),
@@ -70,6 +74,120 @@ const commands = [
 const rest = new REST({ version: "10" }).setToken(token);
 let scheduleCache = null;
 let scheduleCacheAt = 0;
+
+const AI_SYSTEM_PROMPT = [
+  "You are Pokeland Helper, a friendly and genuinely useful gaming companion in a Discord community.",
+  "Answer naturally and conversationally. Match the user's language and style, including Hinglish when they use it.",
+  "Avoid repetitive templates, vary phrasing naturally, and answer the actual question directly.",
+  "Prioritize Pokeland Legends / Pokeland World questions when relevant. Never invent game mechanics, rates, schedules, codes, or updates; clearly say when you are unsure.",
+  "Keep normal replies concise (usually 2-5 lines), but explain more when the question needs it.",
+  "For unrelated topics, answer briefly and helpfully; do not force every conversation back to the game.",
+  "Do not claim to have performed actions, checked live data, or accessed private information unless the user supplied it."
+].join(" ");
+
+const aiConversations = new Map();
+const aiCooldowns = new Map();
+const AI_HISTORY_LIMIT = 12;
+const AI_TIMEOUT_MS = 25000;
+
+function getAiConversationKey(context) {
+  return [context.guildId || "dm", context.channelId, context.userId].join(":");
+}
+
+function rememberAiMessage(key, role, content) {
+  const history = aiConversations.get(key) || [];
+  history.push({ role, content });
+  while (history.length > AI_HISTORY_LIMIT) history.shift();
+  aiConversations.set(key, history);
+  if (aiConversations.size > 300) aiConversations.delete(aiConversations.keys().next().value);
+}
+
+async function requestGroq(messages) {
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": "Bearer " + process.env.GROQ_API_KEY,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
+      messages: [{ role: "system", content: AI_SYSTEM_PROMPT }, ...messages],
+      temperature: 0.8,
+      max_completion_tokens: 600
+    }),
+    signal: AbortSignal.timeout(AI_TIMEOUT_MS)
+  });
+  if (!response.ok) throw new Error("Groq HTTP " + response.status);
+  const data = await response.json();
+  const answer = data.choices?.[0]?.message?.content?.trim();
+  if (!answer) throw new Error("Groq returned an empty response");
+  return answer;
+}
+
+async function requestGemini(messages) {
+  const contents = messages.map(message => ({
+    role: message.role === "assistant" ? "model" : "user",
+    parts: [{ text: message.content }]
+  }));
+  const response = await fetch(
+    "https://generativelanguage.googleapis.com/v1beta/models/" +
+      (process.env.GEMINI_MODEL || "gemini-2.5-flash") +
+      ":generateContent?key=" + encodeURIComponent(process.env.GEMINI_API_KEY),
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemInstruction: { parts: [{ text: AI_SYSTEM_PROMPT }] },
+        contents,
+        generationConfig: { temperature: 0.8, maxOutputTokens: 600 }
+      }),
+      signal: AbortSignal.timeout(AI_TIMEOUT_MS)
+    }
+  );
+  if (!response.ok) throw new Error("Gemini HTTP " + response.status);
+  const data = await response.json();
+  const answer = data.candidates?.[0]?.content?.parts
+    ?.map(part => part.text || "").join("").trim();
+  if (!answer) throw new Error("Gemini returned an empty response");
+  return answer;
+}
+
+async function generateAiReply(context, prompt) {
+  const key = getAiConversationKey(context);
+  const previous = aiConversations.get(key) || [];
+  const messages = [...previous, { role: "user", content: prompt.slice(0, 2000) }];
+  const providers = [];
+  if (process.env.GROQ_API_KEY) providers.push(["Groq", requestGroq]);
+  if (process.env.GEMINI_API_KEY) providers.push(["Gemini", requestGemini]);
+
+  if (!providers.length) {
+    return "AI abhi configure nahi hua hai. Server owner ko hosting secrets mein GROQ_API_KEY ya GEMINI_API_KEY add karni hogi.";
+  }
+
+  for (const [name, request] of providers) {
+    try {
+      const answer = await request(messages);
+      rememberAiMessage(key, "user", prompt.slice(0, 2000));
+      rememberAiMessage(key, "assistant", answer);
+      console.log("AI reply served by " + name + ".");
+      return answer.slice(0, 1900);
+    } catch (error) {
+      console.warn(name + " AI request failed:", error.message);
+    }
+  }
+  return "AI services abhi busy hain ya rate limit par hain. Thodi der baad try karo.";
+}
+
+function checkAiCooldown(userId) {
+  const now = Date.now();
+  const last = aiCooldowns.get(userId) || 0;
+  if (now - last < 4000) return false;
+  aiCooldowns.set(userId, now);
+  if (aiCooldowns.size > 1000) {
+    for (const [id, time] of aiCooldowns) if (now - time > 60000) aiCooldowns.delete(id);
+  }
+  return true;
+}
 
 
 function hktParts(date) {
@@ -288,6 +406,26 @@ client.once("ready", async () => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isChatInputCommand()) return;
   if (!interaction.isChatInputCommand()) return;
+
+  if (interaction.commandName === "ask") {
+    const question = interaction.options.getString("question", true).trim();
+    if (!question) {
+      await interaction.reply({ content: "Please enter a question.", ephemeral: true });
+      return;
+    }
+    if (!checkAiCooldown(interaction.user.id)) {
+      await interaction.reply({ content: "Ek second 😄 Please wait a few seconds before asking again.", ephemeral: true });
+      return;
+    }
+    await interaction.deferReply();
+    const answer = await generateAiReply({
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      userId: interaction.user.id
+    }, question);
+    await interaction.editReply(answer);
+    return;
+  }
 
   if (interaction.commandName === "serverroles") {
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
@@ -515,6 +653,33 @@ client.on("interactionCreate", async interaction => {
         `I couldn't read the server timer from the website right now. Please try again shortly: ${WEBSITE_URL}`
       );
     }
+  }
+});
+
+client.on("messageCreate", async message => {
+  if (message.author.bot || !message.guild || !client.user || !message.mentions.has(client.user)) return;
+  const prompt = message.content
+    .replace(new RegExp("<@!?" + client.user.id + ">", "g"), "")
+    .trim();
+  if (!prompt) {
+    await message.reply("Haan bolo 😄 Kya poochna hai?");
+    return;
+  }
+  if (!checkAiCooldown(message.author.id)) {
+    await message.reply("Ek second 😄 Please wait a few seconds before asking again.");
+    return;
+  }
+  try {
+    await message.channel.sendTyping();
+    const answer = await generateAiReply({
+      guildId: message.guildId,
+      channelId: message.channelId,
+      userId: message.author.id
+    }, prompt);
+    await message.reply({ content: answer, allowedMentions: { repliedUser: false } });
+  } catch (error) {
+    console.error("Mention AI reply failed:", error.message);
+    await message.reply("AI reply abhi nahi aa paya. Thodi der baad try karo.");
   }
 });
 
